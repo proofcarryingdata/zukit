@@ -1,0 +1,28 @@
+{
+  "name": "zukit",
+  "version": "0.0.1",
+  "description": "Like RainbowKit for the Zuzalu Passport",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts",
+    "test": "tsc --noEmit"
+  },
+  "repository": "git+https://github.com/dcposch/zukit.git",
+  "author": "DC Posch",
+  "license": "MIT",
+  "bugs": "https://github.com/dcposch/zukit/issues",
+  "homepage": "https://github.com/dcposch/zukit#readme",
+  "dependencies": {
+    "@pcd/passport-interface": "^0.4.2",
+    "@pcd/pcd-types": "^0.4.1",
+    "@pcd/semaphore-group-pcd": "^0.4.1",
+    "@pcd/semaphore-signature-pcd": "^0.4.1",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.38",
+    "eslint": "^8.39.0",
+    "tsup": "^6.7.0",
+    "typescript": "^5.0.4"
+  }
+}
