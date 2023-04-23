@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsup src/index.ts --dts",
-    "test": "tsc --noEmit"
+    "dev": "tsup src/index.ts --dts --watch",
+    "test": "tsc"
   },
   "repository": "git+https://github.com/dcposch/zukit.git",
   "author": "DC Posch",

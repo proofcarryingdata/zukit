@@ -44,6 +44,11 @@ export function ZupassProvider({
   }
 
   const [state, setState] = useState<ZupassState>(() => {
+    if (typeof window === "undefined") {
+      // support server-side rendering. show logged-out state.
+      return { status: "logged-out" };
+    }
+
     const json = window.localStorage["zupass"];
     let state: ZupassState;
     try {
