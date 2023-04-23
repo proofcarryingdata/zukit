@@ -4,7 +4,7 @@
   "description": "Like RainbowKit for the Zuzalu Passport",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts",
+    "build": "tsup src/index.ts --dts",
     "test": "tsc --noEmit"
   },
   "repository": "git+https://github.com/dcposch/zukit.git",
