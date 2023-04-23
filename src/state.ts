@@ -12,7 +12,7 @@ import {
 
 export type ZupassState = {
   /** Whether the user is logged in. @see ZupassLoginButton */
-  status: "logged-out" | "logged-in" | "logging-in" | "logging-out";
+  status: "logged-out" | "logged-in" | "logging-in";
   /** True for anonymous login, false otherwise. */
   anonymous?: boolean;
 } & (
@@ -27,6 +27,7 @@ export type ZupassState = {
       status: "logging-in";
       anonymous: true;
       group: SerializedSemaphoreGroup;
+      externalNullifier?: string;
     }
   | {
       status: "logged-in";
@@ -38,16 +39,18 @@ export type ZupassState = {
       status: "logged-in";
       anonymous: true;
       group: SerializedSemaphoreGroup;
+      externalNullifier?: string;
       serializedPCD: SerializedPCD<SemaphoreGroupPCD>;
     }
 );
 
 type StateV1 = {
   version: 1;
-  status: "logged-out" | "logged-in" | "logging-in";
+  status: "logged-out" | "logged-in";
   anonymous?: boolean;
   participant?: ZuParticipant;
   group?: SerializedSemaphoreGroup;
+  externalNullifier?: string;
   serializedPCD?: SerializedPCD;
 };
 
@@ -58,11 +61,7 @@ export function parseAndValidate(json: string): ZupassState {
   }
 
   // Validate status
-  if (
-    !["logged-out", "logged-in", "logging-in", "logging-out"].includes(
-      state.status
-    )
-  ) {
+  if (!["logged-out", "logged-in"].includes(state.status)) {
     throw new Error(`Invalid status ${state.status}`);
   }
 
@@ -70,24 +69,18 @@ export function parseAndValidate(json: string): ZupassState {
     return { status: state.status };
   }
 
-  // Validate in-progress login.
-  const { status, anonymous, participant, group, serializedPCD } = state;
+  // Parse and validate PCD and accompanying metadata.
+  const {
+    status,
+    anonymous,
+    participant,
+    group,
+    externalNullifier,
+    serializedPCD,
+  } = state;
   if (anonymous == null) {
     throw new Error(`Missing anonymous flag`);
-  }
-  if (status === "logging-in") {
-    if (anonymous) {
-      if (group == null) {
-        throw new Error(`Missing group`);
-      }
-      return { status, anonymous, group };
-    } else {
-      return { status, anonymous: false };
-    }
-  }
-
-  // Parse and validate PCD and accompanying metadata.
-  if (serializedPCD == null) {
+  } else if (serializedPCD == null) {
     throw new Error(`Missing serialized PCD`);
   } else if (anonymous) {
     if (group == null) {
@@ -95,7 +88,7 @@ export function parseAndValidate(json: string): ZupassState {
     } else if (serializedPCD.type !== SemaphoreGroupPCDPackage.name) {
       throw new Error(`Invalid PCD type ${serializedPCD.type}`);
     }
-    return { anonymous: true, status, group, serializedPCD };
+    return { anonymous: true, status, group, externalNullifier, serializedPCD };
   } else {
     if (participant == null) {
       throw new Error(`Missing participant`);
@@ -121,8 +114,7 @@ export function serialize(state: ZupassState): string {
   } else {
     serState = {
       version: 1,
-      status,
-      anonymous,
+      status: "logged-out",
     };
   }
   return JSON.stringify(serState);

@@ -15,7 +15,12 @@ import { ZupassState, parseAndValidate, serialize } from "./state";
 
 export type ZupassReq =
   | { type: "login"; anonymous: false }
-  | { type: "login"; anonymous: true; group: SerializedSemaphoreGroup }
+  | {
+      type: "login";
+      anonymous: true;
+      group: SerializedSemaphoreGroup;
+      externalNullifier?: string;
+    }
   | { type: "logout" };
 
 export interface ZupassContextVal {
@@ -101,7 +106,7 @@ function writeToLocalStorage(state: ZupassState) {
   window.localStorage["zupass"] = serialize(state);
 }
 
-/** Returns a `logging-in` or `logging-out` state */
+/** Returns a `logging-in` state */
 function handleLoginReq(request: ZupassReq): ZupassState {
   const { type } = request;
   switch (type) {
@@ -111,6 +116,7 @@ function handleLoginReq(request: ZupassReq): ZupassState {
           status: "logging-in",
           anonymous: true,
           group: request.group,
+          externalNullifier: request.externalNullifier,
         };
       } else {
         return { status: "logging-in", anonymous: false };
@@ -135,7 +141,11 @@ async function handleLogin(
   const serializedPCD = JSON.parse(pcdStr) as SerializedPCD;
 
   if (state.anonymous) {
-    return await handleAnonLogin(state.group, serializedPCD);
+    return await handleAnonLogin(
+      state.group,
+      state.externalNullifier,
+      serializedPCD
+    );
   } else {
     if (passportServerURL == null) {
       throw new Error("passportServerURL not set");
@@ -146,6 +156,7 @@ async function handleLogin(
 
 async function handleAnonLogin(
   group: SerializedSemaphoreGroup,
+  externalNullifier: string | undefined,
   serializedPCD: SerializedPCD
 ): Promise<ZupassState | null> {
   const { type, pcd } = serializedPCD;
@@ -163,6 +174,9 @@ async function handleAnonLogin(
   semaGroup.addMembers(group.members);
   if (BigInt(groupPCD.claim.merkleRoot) !== BigInt(semaGroup.root)) {
     throw new Error("Group Merkle root mismatch");
+  }
+  if (groupPCD.claim.externalNullifier !== (externalNullifier || "")) {
+    throw new Error("External nullifier mismatch");
   }
 
   return {

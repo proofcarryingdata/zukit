@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Like RainbowKit for the Zuzalu Passport",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsup src/index.ts --dts",
     "dev": "tsup src/index.ts --dts --watch",
@@ -17,7 +18,9 @@
     "@pcd/passport-interface": "^0.4.2",
     "@pcd/pcd-types": "^0.4.1",
     "@pcd/semaphore-group-pcd": "^0.4.1",
-    "@pcd/semaphore-signature-pcd": "^0.4.1",
+    "@pcd/semaphore-signature-pcd": "^0.4.1"
+  },
+  "peerDependencies": {
     "react": "^18.2.0"
   },
   "devDependencies": {

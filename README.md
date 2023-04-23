@@ -37,7 +37,7 @@ from the `useZupass()` hook.
 ### `useZupass()`
 
 ```tsx
-const zupass = useZupass();
+const [zupass] = useZupass();
 
 switch (zupass.status) {
   case "logged-out":
@@ -88,9 +88,5 @@ npm ci
 npm test
 ```
 
-Example app coming soon. To try it out,
-
-```
-cd example
-npm start
-```
+To see it in use, check out
+<a href="https://github.com/dcposch/zukit-example">zukit-example</a>.
