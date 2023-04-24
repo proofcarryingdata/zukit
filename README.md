@@ -1,4 +1,6 @@
-```
+<img width="630" alt="image" src="https://user-images.githubusercontent.com/169280/234023424-e88b0bba-8ea1-49f5-9bd2-411e8471a4e3.png">
+
+```sh
 npm install zukit
 ```
 
@@ -27,6 +29,10 @@ revealing who they are.
 - **`groupURL`**. Overrides `namedGroup`, specifying a semaphore group URL. For
   example, the named participants group is equivalent to passing
   `https://api.pcd-passport.com/semaphore/1`.
+- **`signal`**. Public input signal. You can use the `generateMessageHash()`
+  function from `semaphore-group-pcd` to create a signal or external nullifier
+  by hashing a string. See
+  <a href="https://semaphore.appliedzkp.org/docs/V1/howitworks">semaphore docs</a>.
 - **`externalNullifier`**. External nullifier. This supports anonymous
   attribution. For example, you can make a poll that people can vote in
   anonymously, while ensuring that each user can only vote once.
@@ -39,13 +45,9 @@ from the `useZupass()` hook.
 ```tsx
 const [zupass] = useZupass();
 
-switch (zupass.status) {
-  case "logged-out":
-    return <h2>Use the button above to log in</h2>;
-  case "logging-in":
-    return <h2>Logging in...</h2>;
-  case "logged-in":
-    return <h2>Welcome, anon</h2>;
+if (zupass.status === "logged-in") {
+  if (zupass.anonymous) return <h2>Welcome, anon</h2>;
+  return <h2>Welcome, {zupass.participant.name}</h2>;
 }
 ```
 
@@ -81,32 +83,39 @@ you must include a URL to the passport server, which serves participant info.
 
 When running the Passport locally in development, use `http://localhost:3002`.
 
+### Popup page
+
+```tsx
+import { usePassportPopupSetup } from "@pcd/passport-interface";
+
+export default function PassportPopup() {
+  return <div>{usePassportPopupSetup()}</div>;
+}
+```
+
+Finally, your app needs a `/popup` page to communicate with the passport. If
+using Next, simply save the snippet above as `pages/popup.tsx`.
+
 ## Development
 
-```
+```sh
 npm ci
 npm test
 ```
 
-To see it in use, check out
-<a href="https://github.com/dcposch/zukit-example">zukit-example</a>.
+To develop Zukit, check out
+<a href="https://github.com/dcposch/zukit-example">zukit-example</a>. Then,
 
-To develop Zukit, check out the example repo. Then,
-
-```
+```sh
 cd zukit
-npm i
 npm link
 cd node_modules/react
 npm link
-npm run dev
 ```
 
-Finally,
+Finally, in the `zukit-example` folder,
 
-```
-cd zukit-example
-npm i
-npm link zukit react
+```sh
+npm i && npm link zukit react
 npm run dev
 ```

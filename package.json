@@ -18,7 +18,8 @@
     "@pcd/passport-interface": "^0.4.2",
     "@pcd/pcd-types": "^0.4.1",
     "@pcd/semaphore-group-pcd": "^0.4.1",
-    "@pcd/semaphore-signature-pcd": "^0.4.1"
+    "@pcd/semaphore-signature-pcd": "^0.4.1",
+    "styled-components": "^5.3.10"
   },
   "peerDependencies": {
     "react": "^18.2.0"

@@ -20,9 +20,9 @@ export type ZupassReq =
   | {
       type: "login";
       anonymous: true;
-      group: SerializedSemaphoreGroup;
       groupURL: string;
-      externalNullifier?: string;
+      signal: bigint;
+      externalNullifier: bigint;
     }
   | { type: "logout" };
 
@@ -50,7 +50,9 @@ export interface ZupassProviderProps {
 export function ZupassProvider(props: ZupassProviderProps) {
   // Read state from local storage on page load
   const [state, setState] = useState<ZupassState>({ status: "logged-out" });
-  useEffect(() => setAndWriteState(readFromLocalStorage()), []);
+  useEffect(() => {
+    readFromLocalStorage().then(setAndWriteState);
+  }, []);
 
   // Write state to local storage whenever a login starts, succeeds, or fails
   const setAndWriteState = (newState: ZupassState) => {
@@ -82,8 +84,7 @@ export function ZupassProvider(props: ZupassProviderProps) {
   const startReq = React.useCallback(
     (request: ZupassReq) => {
       console.log(`[ZUKIT] startReq ${shallowToString(request)}`);
-      const newState = handleLoginReq(request, passportClientURL, popupURL);
-      setAndWriteState(newState);
+      setAndWriteState(handleLoginReq(request, passportClientURL, popupURL));
     },
     [setAndWriteState, passportClientURL, popupURL]
   );
@@ -118,10 +119,10 @@ export function ZupassProvider(props: ZupassProviderProps) {
 }
 
 /** Reads and validates stored state. Otherwise, returns a logged-out state. */
-function readFromLocalStorage(): ZupassState {
+async function readFromLocalStorage(): Promise<ZupassState> {
   const json = window.localStorage["zupass"];
   try {
-    const state = parseAndValidate(json);
+    const state = await parseAndValidate(json);
     console.log(`[ZUKIT] read stored state: ${shallowToString(state)}`);
     return state;
   } catch (e) {
@@ -145,33 +146,31 @@ function handleLoginReq(
   switch (type) {
     case "login":
       if (request.anonymous) {
-        const { group, groupURL, externalNullifier } = request;
-        const signal = "1"; // TODO: request.signal
-
+        const { groupURL, signal, externalNullifier } = request;
         openZuzaluMembershipPopup(
           passportClientURL,
           popupURL,
           groupURL,
           "",
-          signal,
-          externalNullifier
+          "" + signal,
+          "" + externalNullifier
         );
-
         return {
           status: "logging-in",
           anonymous: true,
-          group,
           groupURL,
-          // TODO: signal
+          groupPromise: fetchGroup(groupURL),
+          signal,
           externalNullifier,
         };
       } else {
         openSignedZuzaluUUIDPopup(passportClientURL, popupURL, "");
-
         return { status: "logging-in", anonymous: false };
       }
+
     case "logout":
       return { status: "logged-out" };
+
     default:
       throw new Error(`Invalid request type ${type}`);
   }
@@ -192,7 +191,8 @@ async function handleLogin(
   if (state.anonymous) {
     return await handleAnonLogin(
       state.groupURL,
-      state.group,
+      await state.groupPromise,
+      state.signal,
       state.externalNullifier,
       serializedPCD
     );
@@ -207,7 +207,8 @@ async function handleLogin(
 async function handleAnonLogin(
   groupURL: string,
   group: SerializedSemaphoreGroup,
-  externalNullifier: string | undefined,
+  signal: bigint,
+  externalNullifier: bigint,
   serializedPCD: SerializedPCD
 ): Promise<ZupassState | null> {
   const { type, pcd } = serializedPCD;
@@ -228,7 +229,10 @@ async function handleAnonLogin(
   if (BigInt(groupPCD.claim.merkleRoot) !== BigInt(semaGroup.root)) {
     throw new Error("Group Merkle root mismatch");
   }
-  if (groupPCD.claim.externalNullifier !== (externalNullifier || "")) {
+  if (groupPCD.claim.signal !== "" + signal) {
+    throw new Error("Signal mismatch");
+  }
+  if (groupPCD.claim.externalNullifier !== "" + externalNullifier) {
     throw new Error("External nullifier mismatch");
   }
 
@@ -237,7 +241,10 @@ async function handleAnonLogin(
     anonymous: true,
     group,
     groupURL,
+    signal,
+    externalNullifier,
     serializedPCD,
+    pcd: groupPCD,
   };
 }
 
@@ -267,6 +274,7 @@ async function handleIdentityRevealingLogin(
     anonymous: false,
     participant,
     serializedPCD,
+    pcd: sigPCD,
   };
 }
 
@@ -275,6 +283,7 @@ function shallowToString(obj: any) {
   return JSON.stringify(obj, function (key: string, val: any) {
     if (key === "") return val;
     if (val == null) return null;
+    if (typeof val === "bigint") return "" + val;
     if (Array.isArray(val)) return "<array>";
     if (typeof val === "object") return "<object>";
     return val;
@@ -293,4 +302,12 @@ function validateURL(
     throw new Error("Invalid " + name);
   }
   return ret;
+}
+
+async function fetchGroup(groupURL: string): Promise<SerializedSemaphoreGroup> {
+  const r = await fetch(groupURL);
+  if (!r.ok) {
+    throw new Error(`Failed to fetch ${groupURL}. Got HTTP ${r.status}`);
+  }
+  return r.json();
 }

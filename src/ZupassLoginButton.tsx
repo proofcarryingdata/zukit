@@ -1,5 +1,5 @@
-import { SerializedSemaphoreGroup } from "@pcd/semaphore-group-pcd";
 import { useCallback, useContext } from "react";
+import styled from "styled-components";
 import { ZupassContext } from "./ZupassProvider";
 
 export interface ZupassLoginButtonProps {
@@ -13,6 +13,10 @@ export interface ZupassLoginButtonProps {
   example, the named participants group is equivalent to passing
   `https://api.pcd-passport.com/semaphore/1`. */
   groupURL?: string;
+  /** Public input signal. You can use the `generateMessageHash()`
+  function from `semaphore-group-pcd` to create a signal or external nullifier
+  by hashing a string. */
+  signal?: bigint | string;
   /** External nullifier. This supports anonymous
   attribution. For example, you can make a poll that people can vote in
   anonymously, while ensuring that each user can only vote once. */
@@ -23,6 +27,7 @@ export function ZupassLoginButton({
   anonymous,
   namedGroup,
   groupURL,
+  signal,
   externalNullifier,
 }: ZupassLoginButtonProps) {
   const { state, startReq, passportServerURL } = useContext(ZupassContext);
@@ -31,14 +36,14 @@ export function ZupassLoginButton({
     console.log("[ZUKIT] logging in...");
     if (anonymous) {
       const url = getGroupURL(passportServerURL, namedGroup, groupURL);
-      const group = await fetchGroup(url);
       startReq({
         type: "login",
         anonymous,
-        group,
         groupURL: url,
-        externalNullifier:
-          externalNullifier == null ? undefined : "" + externalNullifier,
+        signal: BigInt(signal == null ? 0 : signal),
+        externalNullifier: BigInt(
+          externalNullifier == null ? 0 : externalNullifier
+        ),
       });
     } else {
       startReq({ type: "login", anonymous: false });
@@ -51,15 +56,54 @@ export function ZupassLoginButton({
   }, [startReq]);
 
   switch (state.status) {
-    case "logged-in":
-      return <button onClick={logout}>Log out</button>;
-    case "logged-out":
-      const message = anonymous ? "Log in anonymously" : "Log in with Zupass";
-      return <button onClick={login}>{message}</button>;
-    case "logging-in":
-      return <button disabled>Logging in...</button>;
+    case "logged-in": {
+      const label = state.anonymous
+        ? text("🕶️", "Welcome, anon")
+        : text("👓", state.participant.name);
+      return <Btn onClick={logout}>{label}</Btn>;
+    }
+    case "logged-out": {
+      const label = anonymous
+        ? text("🕶️", "Log in anonymously")
+        : text("👓", "Log in with Zupass");
+      return <Btn onClick={login}>{label}</Btn>;
+    }
+    case "logging-in": {
+      return <Btn disabled>Logging in...</Btn>;
+    }
   }
 }
+
+function text(emoji: string, text: string) {
+  const msp = "\u2003"; // 1em space
+  return `${emoji}${msp}${text}`;
+}
+
+const Btn = styled.button`
+  background: #fff;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0px 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+  border: none;
+  min-width: 12rem;
+  min-height: 3rem;
+
+  &:hover {
+    background: #fafafa;
+  }
+
+  &:active {
+    background: #f8f8f8;
+  }
+
+  &:disabled {
+    background: #f8f8f8;
+    cursor: default;
+  }
+`;
 
 function getGroupURL(
   passportServerURL?: string,
@@ -74,12 +118,4 @@ function getGroupURL(
   if (groupIx < 0) throw new Error("Invalid namedGroup " + namedGroup);
 
   return `${passportServerURL}/semaphore/${groupIx + 1}`;
-}
-
-async function fetchGroup(groupURL: string): Promise<SerializedSemaphoreGroup> {
-  const r = await fetch(groupURL);
-  if (!r.ok) {
-    throw new Error(`Failed to fetch ${groupURL}. Got HTTP ${r.status}`);
-  }
-  return r.json();
 }
