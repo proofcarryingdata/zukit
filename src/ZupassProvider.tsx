@@ -12,7 +12,7 @@ import {
 import { SemaphoreSignaturePCDPackage } from "@pcd/semaphore-signature-pcd";
 import { Group } from "@semaphore-protocol/group";
 import * as React from "react";
-import { ReactNode, createContext, useState } from "react";
+import { ReactNode, createContext, useEffect, useState } from "react";
 import { ZupassState, parseAndValidate, serialize } from "./state";
 
 export type ZupassReq =
@@ -37,84 +37,48 @@ export const ZupassContext = createContext<ZupassContextVal>({
   startReq: () => {},
 });
 
-export function ZupassProvider(props: {
+export interface ZupassProviderProps {
   children: ReactNode;
+  /** Passport API server, for loading participants and semaphore groups */
   passportServerURL?: string;
+  /** Passport UI, for requesting proofs */
   passportClientURL?: string;
+  /** Local app popup URL. Redirects to passport, returns resulting PCD. */
   popupURL?: string;
-}) {
-  const passportServerURL = url(
-    props.passportServerURL,
-    "passportServerURL",
-    "https://api.pcd-passport.com"
-  );
-  const passportClientURL = url(
-    props.passportClientURL,
-    "passportClientURL",
-    "https://zupass.org"
-  );
-  const defaultPopupURL =
-    typeof window === "undefined"
-      ? "http://localhost/popup"
-      : window.location.origin + "/popup";
-  const popupURL = url(props.popupURL, "popupURL", defaultPopupURL);
+}
 
-  function url(
-    configURL: string | undefined,
-    name: string,
-    defaultURL: string
-  ): string {
-    const ret = configURL || defaultURL;
-    const u = new URL(ret);
-    if (!["http:", "https:"].includes(u.protocol)) {
-      throw new Error("Invalid " + name);
-    }
-    return ret;
-  }
+export function ZupassProvider(props: ZupassProviderProps) {
+  // Read state from local storage on page load
+  const [state, setState] = useState<ZupassState>({ status: "logged-out" });
+  useEffect(() => setAndWriteState(readFromLocalStorage()), []);
 
-  const [state, setState] = useState<ZupassState>(() => {
-    if (typeof window === "undefined") {
-      // support server-side rendering. show logged-out state.
-      return { status: "logged-out" };
-    }
-
-    const json = window.localStorage["zupass"];
-    console.log(`[ZUKIT] read state from localStorage: ${json}`);
-    let state: ZupassState;
-    try {
-      state = parseAndValidate(json);
-    } catch (e) {
-      state = { status: "logged-out" };
-    }
-    writeToLocalStorage(state);
-    return state;
-  });
-
+  // Write state to local storage whenever a login starts, succeeds, or fails
   const setAndWriteState = (newState: ZupassState) => {
     console.log(`[ZUKIT] new state ${shallowToString(newState)}`);
     setState(newState);
     writeToLocalStorage(newState);
   };
 
-  const [pcdStr] = usePassportPopupMessages();
-  React.useEffect(() => {
-    if (pcdStr === "") return;
+  // Configure passport
+  const passportServerURL = validateURL(
+    props.passportServerURL,
+    "passportServerURL",
+    "https://api.pcd-passport.com"
+  );
+  const passportClientURL = validateURL(
+    props.passportClientURL,
+    "passportClientURL",
+    "https://zupass.org"
+  );
+  const popupURL = validateURL(
+    props.popupURL,
+    "popupURL",
+    typeof window === "undefined"
+      ? "http://url.invalid"
+      : window.location.origin + "/popup"
+  );
 
-    console.log(`[ZUKIT] trying to log in with ${pcdStr.substring(0, 40)}...`);
-    handleLogin(state, pcdStr, passportServerURL)
-      .then((newState) => {
-        if (newState) {
-          setAndWriteState(newState);
-        } else {
-          console.log(`[ZUKIT] ${state.status}, ignoring pcd: ${pcdStr}`);
-        }
-      })
-      .catch((e: unknown) => {
-        console.error(e);
-        console.error(`[ZUKIT] error logging in, ignoring pcd: ${pcdStr}`);
-      });
-  }, [pcdStr]);
-
+  // Send login requests to passport
   const startReq = React.useCallback(
     (request: ZupassReq) => {
       console.log(`[ZUKIT] startReq ${shallowToString(request)}`);
@@ -124,6 +88,23 @@ export function ZupassProvider(props: {
     [setAndWriteState, passportClientURL, popupURL]
   );
 
+  // Receive PCDs from passport popup
+  const [pcdStr] = usePassportPopupMessages();
+  React.useEffect(() => {
+    if (pcdStr === "") return;
+    console.log(`[ZUKIT] trying to log in with ${pcdStr.substring(0, 40)}...`);
+    handleLogin(state, pcdStr, passportServerURL)
+      .then((newState) => {
+        if (newState) setAndWriteState(newState);
+        else console.log(`[ZUKIT] ${state.status}, ignoring pcd: ${pcdStr}`);
+      })
+      .catch((e: unknown) => {
+        console.error(e);
+        console.error(`[ZUKIT] error logging in, ignoring pcd: ${pcdStr}`);
+      });
+  }, [pcdStr]);
+
+  // Provide context
   const val = React.useMemo(
     () => ({ passportServerURL, state, startReq }),
     [passportServerURL, state, startReq]
@@ -136,12 +117,25 @@ export function ZupassProvider(props: {
   );
 }
 
+/** Reads and validates stored state. Otherwise, returns a logged-out state. */
+function readFromLocalStorage(): ZupassState {
+  const json = window.localStorage["zupass"];
+  try {
+    const state = parseAndValidate(json);
+    console.log(`[ZUKIT] read stored state: ${shallowToString(state)}`);
+    return state;
+  } catch (e) {
+    console.error(`[ZUKIT] error parsing stored state: ${e}`);
+    return { status: "logged-out" };
+  }
+}
+
 function writeToLocalStorage(state: ZupassState) {
   console.log(`[ZUKIT] writing to local storage, status ${state.status}`);
   window.localStorage["zupass"] = serialize(state);
 }
 
-/** Returns a `logging-in` state */
+/** Pops up the passport, requesting a login. Returns a `logging-in` state */
 function handleLoginReq(
   request: ZupassReq,
   passportClientURL: string,
@@ -285,4 +279,18 @@ function shallowToString(obj: any) {
     if (typeof val === "object") return "<object>";
     return val;
   });
+}
+
+/** Validates a URL config option, with fallback to a default value */
+function validateURL(
+  configURL: string | undefined,
+  name: string,
+  defaultURL: string
+): string {
+  const ret = configURL || defaultURL;
+  const u = new URL(ret);
+  if (!["http:", "https:"].includes(u.protocol)) {
+    throw new Error("Invalid " + name);
+  }
+  return ret;
 }

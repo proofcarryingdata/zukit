@@ -1,6 +1,6 @@
 import { SerializedSemaphoreGroup } from "@pcd/semaphore-group-pcd";
 import { useCallback, useContext } from "react";
-import { ZupassContext, ZupassReq } from "./ZupassProvider";
+import { ZupassContext } from "./ZupassProvider";
 
 export interface ZupassLoginButtonProps {
   /** Default `false`. If false, requests an identity-revealing
@@ -25,8 +25,6 @@ export function ZupassLoginButton({
   groupURL,
   externalNullifier,
 }: ZupassLoginButtonProps) {
-  //const [zupass, startReq] = useZupass();
-
   const { state, startReq, passportServerURL } = useContext(ZupassContext);
 
   const login = useCallback(async () => {

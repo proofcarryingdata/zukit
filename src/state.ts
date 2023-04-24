@@ -121,6 +121,7 @@ export function serialize(state: ZupassState): string {
       status,
       anonymous,
       group: anonymous ? state.group : undefined,
+      groupURL: anonymous ? state.groupURL : undefined,
       participant: anonymous === false ? state.participant : undefined,
       serializedPCD: state.serializedPCD,
     };
