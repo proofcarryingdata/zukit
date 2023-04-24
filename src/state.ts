@@ -26,6 +26,7 @@ export type ZupassState = {
   | {
       status: "logging-in";
       anonymous: true;
+      groupURL: string;
       group: SerializedSemaphoreGroup;
       externalNullifier?: string;
     }
@@ -38,6 +39,7 @@ export type ZupassState = {
   | {
       status: "logged-in";
       anonymous: true;
+      groupURL: string;
       group: SerializedSemaphoreGroup;
       externalNullifier?: string;
       serializedPCD: SerializedPCD<SemaphoreGroupPCD>;
@@ -50,6 +52,7 @@ type StateV1 = {
   anonymous?: boolean;
   participant?: ZuParticipant;
   group?: SerializedSemaphoreGroup;
+  groupURL?: string;
   externalNullifier?: string;
   serializedPCD?: SerializedPCD;
 };
@@ -75,6 +78,7 @@ export function parseAndValidate(json: string): ZupassState {
     anonymous,
     participant,
     group,
+    groupURL,
     externalNullifier,
     serializedPCD,
   } = state;
@@ -85,10 +89,19 @@ export function parseAndValidate(json: string): ZupassState {
   } else if (anonymous) {
     if (group == null) {
       throw new Error(`Missing group`);
+    } else if (groupURL == null) {
+      throw new Error(`Missing groupURL`);
     } else if (serializedPCD.type !== SemaphoreGroupPCDPackage.name) {
       throw new Error(`Invalid PCD type ${serializedPCD.type}`);
     }
-    return { anonymous: true, status, group, externalNullifier, serializedPCD };
+    return {
+      anonymous: true,
+      status,
+      group,
+      groupURL,
+      externalNullifier,
+      serializedPCD,
+    };
   } else {
     if (participant == null) {
       throw new Error(`Missing participant`);

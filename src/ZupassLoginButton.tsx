@@ -1,6 +1,6 @@
 import { SerializedSemaphoreGroup } from "@pcd/semaphore-group-pcd";
 import { useCallback, useContext } from "react";
-import { ZupassContext } from "./ZupassProvider";
+import { ZupassContext, ZupassReq } from "./ZupassProvider";
 
 export interface ZupassLoginButtonProps {
   /** Default `false`. If false, requests an identity-revealing
@@ -16,7 +16,7 @@ export interface ZupassLoginButtonProps {
   /** External nullifier. This supports anonymous
   attribution. For example, you can make a poll that people can vote in
   anonymously, while ensuring that each user can only vote once. */
-  externalNullifier?: string;
+  externalNullifier?: bigint | string;
 }
 
 export function ZupassLoginButton({
@@ -30,17 +30,25 @@ export function ZupassLoginButton({
   const { state, startReq, passportServerURL } = useContext(ZupassContext);
 
   const login = useCallback(async () => {
-    console.log("[ZUPASS] Logging in...");
+    console.log("[ZUKIT] logging in...");
     if (anonymous) {
-      const group = await fetchGroup(passportServerURL, namedGroup, groupURL);
-      startReq({ type: "login", anonymous, group, externalNullifier });
+      const url = getGroupURL(passportServerURL, namedGroup, groupURL);
+      const group = await fetchGroup(url);
+      startReq({
+        type: "login",
+        anonymous,
+        group,
+        groupURL: url,
+        externalNullifier:
+          externalNullifier == null ? undefined : "" + externalNullifier,
+      });
     } else {
       startReq({ type: "login", anonymous: false });
     }
   }, [startReq, anonymous, namedGroup, groupURL, externalNullifier]);
 
   const logout = useCallback(() => {
-    console.log("[ZUPASS] Logging out...");
+    console.log("[ZUKIT] logging out...");
     startReq({ type: "logout" });
   }, [startReq]);
 
@@ -55,19 +63,22 @@ export function ZupassLoginButton({
   }
 }
 
-async function fetchGroup(
+function getGroupURL(
   passportServerURL?: string,
   namedGroup?: string,
   groupURL?: string
-): Promise<SerializedSemaphoreGroup> {
-  if (!groupURL) {
-    if (!namedGroup) {
-      namedGroup = "participants";
-    }
-    if (!passportServerURL) throw new Error("Missing passportServerURL");
-    groupURL = `${passportServerURL}/semaphore/${namedGroup}`;
-  }
+): string {
+  if (groupURL) return groupURL;
 
+  if (!passportServerURL) throw new Error("Missing passportServerURL");
+  const groups = ["participants", "residents", "visitors", "organizers"];
+  const groupIx = groups.indexOf(namedGroup || "participants");
+  if (groupIx < 0) throw new Error("Invalid namedGroup " + namedGroup);
+
+  return `${passportServerURL}/semaphore/${groupIx + 1}`;
+}
+
+async function fetchGroup(groupURL: string): Promise<SerializedSemaphoreGroup> {
   const r = await fetch(groupURL);
   if (!r.ok) {
     throw new Error(`Failed to fetch ${groupURL}. Got HTTP ${r.status}`);

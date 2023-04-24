@@ -90,3 +90,23 @@ npm test
 
 To see it in use, check out
 <a href="https://github.com/dcposch/zukit-example">zukit-example</a>.
+
+To develop Zukit, check out the example repo. Then,
+
+```
+cd zukit
+npm i
+npm link
+cd node_modules/react
+npm link
+npm run dev
+```
+
+Finally,
+
+```
+cd zukit-example
+npm i
+npm link zukit react
+npm run dev
+```
