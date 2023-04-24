@@ -6,13 +6,14 @@ npm install zukit
 
 **This React library makes it easy to use the Zuzalu Passport.**
 
-It gives you a `Login with Zupass` button similar to RainbowKit's
-`Connect Wallet` button.
+It gives you a login button similar to RainbowKit's `Connect Wallet` button.
 
 **Supports anonymous login, where your website never learns who the user is.**
 Instead, Zupass creates a zero-knowledge proof that the user is part of a set--
 for example, all Zuzalu participants, or just residents or organizers--without
 revealing who they are.
+
+**<a href="https://zukit-example.vercel.app/">Live demo here.</a>**
 
 ## Reference
 
@@ -39,6 +40,8 @@ revealing who they are.
 
 Notice that there's no callback. Instead, you can get status and loading states
 from the `useZupass()` hook.
+
+<img width="638" alt="image" src="https://user-images.githubusercontent.com/169280/234030533-fb3232a4-dfcf-4d19-9d0f-8a41b84a5137.png">
 
 ### `useZupass()`
 
@@ -104,18 +107,4 @@ npm test
 ```
 
 To develop Zukit, check out
-<a href="https://github.com/dcposch/zukit-example">zukit-example</a>. Then,
-
-```sh
-cd zukit
-npm link
-cd node_modules/react
-npm link
-```
-
-Finally, in the `zukit-example` folder,
-
-```sh
-npm i && npm link zukit react
-npm run dev
-```
+<a href="https://github.com/dcposch/zukit-example">zukit-example</a>.
