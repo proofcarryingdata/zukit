@@ -80,8 +80,16 @@ export function ZupassLoginButton({
 }
 
 function customButton(className: string) {
-  return function CustomBtn({ children }: { children: ReactNode }) {
-    return <button className={className}>{children}</button>;
+  return function CustomBtn(props: {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) {
+    return (
+      <button className={className} {...props}>
+        {props.children}
+      </button>
+    );
   };
 }
 

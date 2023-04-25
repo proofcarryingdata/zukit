@@ -37,6 +37,8 @@ revealing who they are.
 - **`externalNullifier`**. External nullifier. This supports anonymous
   attribution. For example, you can make a poll that people can vote in
   anonymously, while ensuring that each user can only vote once.
+- **`className`**. CSS class for the button. Overrides default styling. Button
+  will be `:disabled` while logging in.
 
 Notice that there's no callback. Instead, you can get status and loading states
 from the `useZupass()` hook.
