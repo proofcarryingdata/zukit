@@ -1,4 +1,4 @@
-import { useCallback, useContext } from "react";
+import { ReactNode, useCallback, useContext } from "react";
 import styled from "styled-components";
 import { ZupassContext } from "./ZupassProvider";
 
@@ -21,6 +21,8 @@ export interface ZupassLoginButtonProps {
   attribution. For example, you can make a poll that people can vote in
   anonymously, while ensuring that each user can only vote once. */
   externalNullifier?: bigint | string;
+  /** CSS class for the button. Overrides default styling. */
+  className?: string;
 }
 
 export function ZupassLoginButton({
@@ -29,6 +31,7 @@ export function ZupassLoginButton({
   groupURL,
   signal,
   externalNullifier,
+  className,
 }: ZupassLoginButtonProps) {
   const { state, startReq, passportServerURL } = useContext(ZupassContext);
 
@@ -55,23 +58,31 @@ export function ZupassLoginButton({
     startReq({ type: "logout" });
   }, [startReq]);
 
+  const Elem = className != null ? customButton(className) : Btn;
+
   switch (state.status) {
     case "logged-in": {
       const label = state.anonymous
         ? text("🕶️", "Welcome, anon")
         : text("👓", state.participant.name);
-      return <Btn onClick={logout}>{label}</Btn>;
+      return <Elem onClick={logout}>{label}</Elem>;
     }
     case "logged-out": {
       const label = anonymous
         ? text("🕶️", "Log in anonymously")
         : text("👓", "Log in with Zupass");
-      return <Btn onClick={login}>{label}</Btn>;
+      return <Elem onClick={login}>{label}</Elem>;
     }
     case "logging-in": {
-      return <Btn disabled>Logging in...</Btn>;
+      return <Elem disabled>Logging in...</Elem>;
     }
   }
+}
+
+function customButton(className: string) {
+  return function CustomBtn({ children }: { children: ReactNode }) {
+    return <button className={className}>{children}</button>;
+  };
 }
 
 function text(emoji: string, text: string) {
