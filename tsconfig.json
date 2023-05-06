@@ -5,6 +5,7 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
+    "lib": ["ES2022", "DOM"],
     "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
