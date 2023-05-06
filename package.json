@@ -1,6 +1,6 @@
 {
   "name": "zukit",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Like RainbowKit for the Zuzalu Passport",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
