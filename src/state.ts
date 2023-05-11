@@ -60,7 +60,11 @@ type StateV1 = {
   serializedPCD?: SerializedPCD;
 };
 
-export async function parseAndValidate(json: string): Promise<ZupassState> {
+export async function parseAndValidate(json?: string): Promise<ZupassState> {
+  if (json == null || json.trim() === "") {
+    return { status: "logged-out" };
+  }
+
   const stored = JSON.parse(json) as StateV1;
   if (stored.version !== 1) {
     throw new Error(`Invalid state version ${stored.version}`);
