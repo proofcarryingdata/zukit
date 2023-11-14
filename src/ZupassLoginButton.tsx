@@ -1,6 +1,6 @@
 import { ReactNode, useCallback, useContext } from "react";
 import styled from "styled-components";
-import { ZupassContext } from "./ZupassProvider";
+import { ZupassContext } from "./state";
 
 export interface ZupassLoginButtonProps {
   /** Default `false`. If false, requests an identity-revealing
@@ -25,7 +25,7 @@ export interface ZupassLoginButtonProps {
   className?: string;
 }
 
-export function ZupassLoginButton({
+export default function ZupassLoginButton({
   anonymous,
   namedGroup,
   groupURL,
@@ -64,7 +64,7 @@ export function ZupassLoginButton({
     case "logged-in": {
       const label = state.anonymous
         ? text("🕶️", "Welcome, anon")
-        : text("👓", state.participant.name);
+        : text("👓", state.participant.email);
       return <Elem onClick={logout}>{label}</Elem>;
     }
     case "logged-out": {

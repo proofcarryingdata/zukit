@@ -1,4 +1,4 @@
-import { ZuParticipant } from "@pcd/passport-interface";
+import { ZupassUserJson as User } from "./vendor/api/requestTypes";
 import { SerializedPCD } from "@pcd/pcd-types";
 import {
   SemaphoreGroupPCD,
@@ -9,6 +9,7 @@ import {
   SemaphoreSignaturePCD,
   SemaphoreSignaturePCDPackage,
 } from "@pcd/semaphore-signature-pcd";
+import { ReactNode, createContext } from "react";
 
 export type ZupassState = {
   /** Whether the user is logged in. @see ZupassLoginButton */
@@ -32,7 +33,7 @@ export type ZupassState = {
   | {
       status: "logged-in";
       anonymous: false;
-      participant: ZuParticipant;
+      participant: User;
       serializedPCD: SerializedPCD<SemaphoreSignaturePCD>;
       pcd: SemaphoreSignaturePCD;
     }
@@ -52,7 +53,7 @@ type StateV1 = {
   version: 1;
   status: "logged-out" | "logged-in";
   anonymous?: boolean;
-  participant?: ZuParticipant;
+  participant?: User;
   group?: SerializedSemaphoreGroup;
   groupURL?: string;
   signal?: string;
@@ -153,4 +154,36 @@ export function serialize(state: ZupassState): string {
     };
   }
   return JSON.stringify(serState);
+}
+
+export type ZupassReq =
+  | { type: "login"; anonymous: false }
+  | {
+      type: "login";
+      anonymous: true;
+      groupURL: string;
+      signal: bigint;
+      externalNullifier: bigint;
+    }
+  | { type: "logout" };
+
+export interface ZupassContextVal {
+  passportServerURL?: string;
+  state: ZupassState;
+  startReq: (request: ZupassReq) => void;
+}
+
+export const ZupassContext = createContext<ZupassContextVal>({
+  state: { status: "logged-out" },
+  startReq: () => {},
+});
+
+export interface ZupassProviderProps {
+  children: ReactNode;
+  /** Passport API server, for loading participants and semaphore groups */
+  passportServerURL?: string;
+  /** Passport UI, for requesting proofs */
+  passportClientURL?: string;
+  /** Local app popup URL. Redirects to passport, returns resulting PCD. */
+  popupURL?: string;
 }

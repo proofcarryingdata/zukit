@@ -1,9 +1,6 @@
-import {
-  fetchParticipant,
-  openSignedZuzaluUUIDPopup,
-  openZuzaluMembershipPopup,
-  usePassportPopupMessages,
-} from "@pcd/passport-interface";
+import { openSignedZuzaluSignInPopup } from "./vendor/SemaphoreSignatureIntegration";
+import { requestUser } from "./vendor/api/requestUser";
+import { useZupassPopupMessages } from "./vendor/PassportPopup";
 import { SerializedPCD } from "@pcd/pcd-types";
 import {
   SemaphoreGroupPCDPackage,
@@ -11,41 +8,15 @@ import {
 } from "@pcd/semaphore-group-pcd";
 import { SemaphoreSignaturePCDPackage } from "@pcd/semaphore-signature-pcd";
 import { Group } from "@semaphore-protocol/group";
-import * as React from "react";
-import { ReactNode, createContext, useEffect, useState } from "react";
-import { ZupassState, parseAndValidate, serialize } from "./state";
-
-export type ZupassReq =
-  | { type: "login"; anonymous: false }
-  | {
-      type: "login";
-      anonymous: true;
-      groupURL: string;
-      signal: bigint;
-      externalNullifier: bigint;
-    }
-  | { type: "logout" };
-
-export interface ZupassContextVal {
-  passportServerURL?: string;
-  state: ZupassState;
-  startReq: (request: ZupassReq) => void;
-}
-
-export const ZupassContext = createContext<ZupassContextVal>({
-  state: { status: "logged-out" },
-  startReq: () => {},
-});
-
-export interface ZupassProviderProps {
-  children: ReactNode;
-  /** Passport API server, for loading participants and semaphore groups */
-  passportServerURL?: string;
-  /** Passport UI, for requesting proofs */
-  passportClientURL?: string;
-  /** Local app popup URL. Redirects to passport, returns resulting PCD. */
-  popupURL?: string;
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ZupassContext,
+  ZupassProviderProps,
+  ZupassReq,
+  ZupassState,
+  parseAndValidate,
+  serialize,
+} from "./state";
 
 export function ZupassProvider(props: ZupassProviderProps) {
   // Read state from local storage on page load
@@ -56,7 +27,7 @@ export function ZupassProvider(props: ZupassProviderProps) {
 
   // Write state to local storage whenever a login starts, succeeds, or fails
   const setAndWriteState = (newState: ZupassState) => {
-    console.log(`[ZUKIT] new state ${shallowToString(newState)}`);
+    console.log(`[ZUKIT] new state ${JSON.stringify(newState)}`);
     setState(newState);
     writeToLocalStorage(newState);
   };
@@ -65,7 +36,7 @@ export function ZupassProvider(props: ZupassProviderProps) {
   const passportServerURL = validateURL(
     props.passportServerURL,
     "passportServerURL",
-    "https://api.pcd-passport.com"
+    "https://api.zupass.org"
   );
   const passportClientURL = validateURL(
     props.passportClientURL,
@@ -81,7 +52,7 @@ export function ZupassProvider(props: ZupassProviderProps) {
   );
 
   // Send login requests to passport
-  const startReq = React.useCallback(
+  const startReq = useCallback(
     (request: ZupassReq) => {
       console.log(`[ZUKIT] startReq ${shallowToString(request)}`);
       setAndWriteState(handleLoginReq(request, passportClientURL, popupURL));
@@ -90,10 +61,10 @@ export function ZupassProvider(props: ZupassProviderProps) {
   );
 
   // Receive PCDs from passport popup
-  const [pcdStr] = usePassportPopupMessages();
-  React.useEffect(() => {
+  const [pcdStr] = useZupassPopupMessages();
+  useEffect(() => {
     if (pcdStr === "") return;
-    console.log(`[ZUKIT] trying to log in with ${pcdStr.substring(0, 40)}...`);
+    console.log(`[ZUKIT] trying to log in with ${pcdStr}...`);
     handleLogin(state, pcdStr, passportServerURL)
       .then((newState) => {
         if (newState) setAndWriteState(newState);
@@ -106,7 +77,7 @@ export function ZupassProvider(props: ZupassProviderProps) {
   }, [pcdStr]);
 
   // Provide context
-  const val = React.useMemo(
+  const val = useMemo(
     () => ({ passportServerURL, state, startReq }),
     [passportServerURL, state, startReq]
   );
@@ -146,25 +117,10 @@ function handleLoginReq(
   switch (type) {
     case "login":
       if (request.anonymous) {
-        const { groupURL, signal, externalNullifier } = request;
-        openZuzaluMembershipPopup(
-          passportClientURL,
-          popupURL,
-          groupURL,
-          "",
-          "" + signal,
-          "" + externalNullifier
-        );
-        return {
-          status: "logging-in",
-          anonymous: true,
-          groupURL,
-          groupPromise: fetchGroup(groupURL),
-          signal,
-          externalNullifier,
-        };
+        throw new Error("Anonymous login not implemented");
       } else {
-        openSignedZuzaluUUIDPopup(passportClientURL, popupURL, "");
+        console.log(`[ZUKIT] opening popup... ${popupURL}`);
+        openSignedZuzaluSignInPopup(passportClientURL, popupURL, popupURL);
         return { status: "logging-in", anonymous: false };
       }
 
@@ -262,11 +218,20 @@ async function handleIdentityRevealingLogin(
   if (!(await SemaphoreSignaturePCDPackage.verify(sigPCD))) {
     throw new Error("Invalid signature");
   }
-  const uuid = sigPCD.claim.signedMessage;
-  const participant = await fetchParticipant(passportServerUrl, uuid);
-  if (!participant) {
-    throw new Error(`No participant with uuid ${uuid}`);
-  } else if (participant.commitment !== sigPCD.claim.identityCommitment) {
+  const signedMessage = sigPCD.claim.signedMessage;
+  console.log(`[ZUKIT] verifying signed message ${signedMessage}`);
+  const uuid = JSON.parse(signedMessage).uuid;
+  console.log(`[ZUKIT] fetching participant ${uuid}...`);
+  const participantRequest = await requestUser(passportServerUrl, uuid);
+  if (!participantRequest.success) {
+    if (participantRequest.error.userMissing) {
+      throw new Error(`No participant with uuid ${uuid}`);
+    } else {
+      throw new Error(participantRequest.error.errorMessage);
+    }
+  }
+  const participant = participantRequest.value;
+  if (participant.commitment !== sigPCD.claim.identityCommitment) {
     throw new Error(`Participant commitment mismatch`);
   }
   return {
