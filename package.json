@@ -15,10 +15,9 @@
   "bugs": "https://github.com/dcposch/zukit/issues",
   "homepage": "https://github.com/dcposch/zukit#readme",
   "dependencies": {
-    "@pcd/passport-interface": "^0.5.1",
-    "@pcd/pcd-types": "^0.5.1",
-    "@pcd/semaphore-group-pcd": "^0.5.1",
-    "@pcd/semaphore-signature-pcd": "^0.5.1",
+    "@pcd/pcd-types": "^0.8.0",
+    "@pcd/semaphore-group-pcd": "^0.8.0",
+    "@pcd/semaphore-signature-pcd": "^0.8.0",
     "styled-components": "^5.3.10"
   },
   "peerDependencies": {
