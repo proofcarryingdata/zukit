@@ -1,3 +1,6 @@
+// From https://github.com/proofcarryingdata/zupass/blob/main/packages/passport-interface/src/SemaphoreSignatureIntegration.ts
+// Modified to fix import bugs
+
 import { openZupassPopup } from "./PassportPopup";
 
 /**
@@ -32,7 +35,7 @@ export function openSignedZuzaluSignInPopup(
     },
     pcdType: "semaphore-signature-pcd",
     options: {
-      title: "Zuzalu Auth",
+      title: "Sign in with Zupass",
       description: originalSiteName,
       signIn: true,
     },

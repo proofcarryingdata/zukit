@@ -27,7 +27,7 @@ export function ZupassProvider(props: ZupassProviderProps) {
 
   // Write state to local storage whenever a login starts, succeeds, or fails
   const setAndWriteState = (newState: ZupassState) => {
-    console.log(`[ZUKIT] new state ${shallowToString(newState)}`);
+    console.log(`[ZUKIT] new state ${JSON.stringify(newState)}`);
     setState(newState);
     writeToLocalStorage(newState);
   };

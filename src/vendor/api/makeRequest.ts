@@ -1,3 +1,6 @@
+// From https://github.com/proofcarryingdata/zupass/blob/main/packages/passport-interface/src/SemaphoreSignatureIntegration.ts
+// Modified to fix import bugs
+
 import { getErrorMessage, sleep } from "@pcd/util";
 import { APIResult, GetResultValue, ResultMapper } from "./apiResult";
 import { POST } from "./constants";

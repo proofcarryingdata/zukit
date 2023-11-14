@@ -1,3 +1,6 @@
+// From https://github.com/proofcarryingdata/zupass/blob/main/packages/passport-interface/src/SemaphoreSignatureIntegration.ts
+// Modified to fix import bugs
+
 /**
  * In the case that loading an existing Zupass user fails,
  * we can determine if it failed because the user does not exist,

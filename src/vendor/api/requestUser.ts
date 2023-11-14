@@ -1,3 +1,6 @@
+// From https://github.com/proofcarryingdata/zupass/blob/main/packages/passport-interface/src/SemaphoreSignatureIntegration.ts
+// Modified to fix import bugs
+
 import { LoadUserError, UserResponseValue } from "./requestTypes";
 import { APIResult } from "./apiResult";
 import { httpGet } from "./makeRequest";
